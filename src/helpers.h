@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#define M_PI 3.14159265358979323846264338327950288
+
 // for convenience
 using std::string;
 using std::vector;

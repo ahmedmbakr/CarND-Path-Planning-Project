@@ -24,12 +24,13 @@ int main() {
   vector<double> map_waypoints_dy;
 
   // Waypoint map to read from
-  string map_file_ = "../data/highway_map.csv";
+  string file_path = __FILE__;
+  string dir_path = file_path.substr(0, file_path.rfind("\\"));//The path of the main.cpp file
+  string map_file_ = dir_path + "/../data/highway_map.csv";
   // The max s value before wrapping around the track back to 0
   double max_s = 6945.554;
 
   std::ifstream in_map_(map_file_.c_str(), std::ifstream::in);
-
   string line;
   while (getline(in_map_, line)) {
     std::istringstream iss(line);

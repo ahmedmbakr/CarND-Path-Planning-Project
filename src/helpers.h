@@ -172,6 +172,12 @@ namespace
 		assert(lane_num >= 0 && lane_num < NUM_LANES);
 		return((LANE_WIDTH / 2) + LANE_WIDTH * lane_num);
 	}
+
+	//converts miles/hour to meters/second
+	double convert_mph_to_mps(double mph)
+	{
+		return(mph * 0.44704);
+	}
 }
 
 #endif  // HELPERS_H

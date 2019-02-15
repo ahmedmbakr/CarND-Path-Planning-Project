@@ -123,6 +123,10 @@ private:
 	//auto sensor_fusion;
 
 	const Road_points &road_points;
+
+	std::vector<double> convert_frenet_to_cartesian_coordinates(const double s, const double d) const;
+	void transform_from_world_to_car_coordinates(std::vector<double>& ptsx, std::vector<double>& ptsy, const double car_ref_x, const double car_ref_y, const double car_ref_yaw);
+	std::vector<double> transform_from_car_to_world_coordinates(const double ptx_car_coordinates, const double pty_car_coordinates, const double car_ref_x, const double car_ref_y, const double car_ref_yaw) const;
 public:
 	Self_driving_car(const Road_points& road_points);
 	~Self_driving_car();

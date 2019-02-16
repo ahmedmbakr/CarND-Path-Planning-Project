@@ -125,6 +125,8 @@ private:
 	double car_yaw;
 	double car_speed;
 
+	double ref_velocity;//computed inside the class, as when I depend on car_speed it sometimes generates wrong values
+
 	std::vector<double> previous_path_x;
 	std::vector<double> previous_path_y;
 
@@ -139,6 +141,7 @@ private:
 	void transform_from_world_to_car_coordinates(std::vector<double>& ptsx, std::vector<double>& ptsy, const double car_ref_x, const double car_ref_y, const double car_ref_yaw);
 	std::vector<double> transform_from_car_to_world_coordinates(const double ptx_car_coordinates, const double pty_car_coordinates, const double car_ref_x, const double car_ref_y, const double car_ref_yaw) const;
 	Sensor_fusion_car* get_car_exist_in_front_of_us(const float safe_dist_m);
+	double get_velocity_increment_rate(double v0, double vt, int n);
 public:
 	Self_driving_car(const Road_points& road_points);
 	~Self_driving_car();

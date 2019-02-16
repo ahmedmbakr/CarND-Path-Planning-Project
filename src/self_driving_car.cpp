@@ -5,6 +5,7 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "sensor_fusion_car.h"
+#include <iostream>
 
 using namespace std;
 
@@ -39,7 +40,9 @@ vector<double> Self_driving_car::transform_from_car_to_world_coordinates(const d
 	return{ x_point, y_point };
 }
 
-Self_driving_car::Self_driving_car(const Road_points &road_points) : road_points(road_points)
+Self_driving_car::Self_driving_car(const Road_points &road_points) : car_x(0), car_y(0), car_s(0), car_d(0), car_yaw(0),
+                                                                     car_speed(0), end_path_s(0), end_path_d(0),
+                                                                     road_points(road_points), ref_velocity(0)
 {
 }
 
@@ -51,17 +54,19 @@ Self_driving_car::~Self_driving_car()
 vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 {
 	int lane_num = 1;//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
-	float ref_velocity = CAR_MAX_VELOCITY;
+	double target_velocity_at_end_of_trajectory = ref_velocity;
 	Sensor_fusion_car* car_exist_in_front_of_us = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M);
 	if(car_exist_in_front_of_us != nullptr)
 	{
-		//TODO: what I am doing here is changing the velocity of our car to the velocity of the car in front of us
-		//we will need to raise a signal to change the lanes if possible or stay in the current lane but
-		//not to change the speed immediately
+		//TODO: I need to check if I can change lane in this case
 		double other_vx = car_exist_in_front_of_us->get_vx();
 		double other_vy = car_exist_in_front_of_us->get_vy();
 		double other_velocity = sqrt(other_vx * other_vx + other_vy * other_vy);
-		ref_velocity = other_velocity;
+		target_velocity_at_end_of_trajectory = other_velocity;
+	}
+	else if(ref_velocity < CAR_MAX_VELOCITY)
+	{
+		target_velocity_at_end_of_trajectory = CAR_MAX_VELOCITY;
 	}
 	int prev_size = previous_path_x.size();
 	vector<double> ptsx;
@@ -95,17 +100,13 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 		ptsy.push_back(ref_y_prev);
 		ptsy.push_back(ref_y);
 	}
-	vector<double> next_mp0 = convert_frenet_to_cartesian_coordinates(car_s + 30, car_d);
-	vector<double> next_mp1 = convert_frenet_to_cartesian_coordinates(car_s + 60, car_d);
-	vector<double> next_mp2 = convert_frenet_to_cartesian_coordinates(car_s + 90, car_d);
 
-	ptsx.push_back(next_mp0[0]);
-	ptsx.push_back(next_mp1[0]);
-	ptsx.push_back(next_mp2[0]);
-
-	ptsy.push_back(next_mp0[1]);
-	ptsy.push_back(next_mp1[1]);
-	ptsy.push_back(next_mp2[1]);
+	for(int i = 1; i <= 3;++i)
+	{
+		vector<double> next_mp = convert_frenet_to_cartesian_coordinates(car_s + i * 30, car_d);//TODO: you need to change this to 60 or even higher if you change NUM_POINTS_FOR_TRAJECTORY or you will get an error
+		ptsx.push_back(next_mp[0]);
+		ptsy.push_back(next_mp[1]);
+	}
 
 	transform_from_world_to_car_coordinates(ptsx, ptsy, ref_x, ref_y, ref_yaw);
 
@@ -126,13 +127,15 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 	const double target_x = 30.0;//Draw a trajectory for 30 meters ahead the car's current position
 	const double target_y = s(target_x);
 	const double target_dist = sqrt(target_x * target_x + target_y * target_y);
-
+	const int num_remaining_points_to_compute = NUM_POINTS_FOR_TRAJECTORY - previous_path_x.size();
 	double x_add_on = 0;
-	const double N = target_dist / (CAR_UPDATE_POSITION_RATE * convert_mph_to_mps(ref_velocity));
-
+	const double velocity_inc_mps = get_velocity_increment_rate(ref_velocity, target_velocity_at_end_of_trajectory,
+		num_remaining_points_to_compute);
 	//fill up the rest of our path planner after filling it with previous points, here we will always output 50 points
-	for (int i = 0; i < NUM_POINTS_FOR_TRAJECTORY - previous_path_x.size();++i)
+	for (int i = 0; i < num_remaining_points_to_compute;++i)
 	{
+		ref_velocity += velocity_inc_mps;
+		const double N = target_dist / (CAR_UPDATE_POSITION_RATE * convert_mph_to_mps(ref_velocity));
 		double x_point = x_add_on + (target_x / N);
 		double y_point = s(x_point);
 
@@ -174,4 +177,13 @@ Sensor_fusion_car* Self_driving_car::get_car_exist_in_front_of_us(const float sa
 		}
 	}
 	return nullptr;
+}
+
+double Self_driving_car::get_velocity_increment_rate(double v0, double vt, int n)
+{
+	double velocity_inc = (vt - v0) / n;
+	int sign = velocity_inc < 0 ? -1 : 1;
+	if (abs(velocity_inc) >= CAR_MAX_VELOCITY_INCREMENT_RATE)
+		velocity_inc = sign * CAR_MAX_VELOCITY_INCREMENT_RATE;
+	return velocity_inc;
 }

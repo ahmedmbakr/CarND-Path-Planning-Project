@@ -178,6 +178,13 @@ namespace
 	{
 		return(mph * 0.44704);
 	}
+
+	const int convert_frenet_d_coord_to_lane_num(const double d)
+	{
+		const int lane_num = d / LANE_WIDTH;
+
+		return lane_num;
+	}
 }
 
 #endif  // HELPERS_H

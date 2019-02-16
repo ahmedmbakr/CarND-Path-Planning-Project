@@ -9,6 +9,7 @@
 #include "json.hpp"
 #include "Road_points.h"
 #include "self_driving_car.h"
+#include "sensor_fusion_car.h"
 
 // for convenience
 using nlohmann::json;
@@ -86,6 +87,9 @@ int main() {
 					// Sensor Fusion Data, a list of all other cars on the same side 
 					//   of the road.
 					auto sensor_fusion = j[1]["sensor_fusion"];
+					const vector<Sensor_fusion_car> sensor_fusion_cars = Sensor_fusion_builder::parse_sensor_fusion_vec(
+						sensor_fusion);
+					car.set_sensor_fusion_cars(sensor_fusion_cars);
 
 					json msgJson;
 

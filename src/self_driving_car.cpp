@@ -4,6 +4,7 @@
 #include "spline.h"
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
+#include "sensor_fusion_car.h"
 
 using namespace std;
 
@@ -51,11 +52,21 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 {
 	int lane_num = 1;//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
 	float ref_velocity = CAR_MAX_VELOCITY;
-
+	Sensor_fusion_car* car_exist_in_front_of_us = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M);
+	if(car_exist_in_front_of_us != nullptr)
+	{
+		//TODO: what I am doing here is changing the velocity of our car to the velocity of the car in front of us
+		//we will need to raise a signal to change the lanes if possible or stay in the current lane but
+		//not to change the speed immediately
+		double other_vx = car_exist_in_front_of_us->get_vx();
+		double other_vy = car_exist_in_front_of_us->get_vy();
+		double other_velocity = sqrt(other_vx * other_vx + other_vy * other_vy);
+		ref_velocity = other_velocity;
+	}
 	int prev_size = previous_path_x.size();
 	vector<double> ptsx;
 	vector<double> ptsy;
-
+	
 	double ref_x = car_x;
 	double ref_y = car_y;
 	double ref_yaw = deg2rad(car_yaw);
@@ -130,8 +141,37 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 		vector<double> x_y_point = transform_from_car_to_world_coordinates(x_point, y_point, ref_x, ref_y,
 			ref_yaw);
 		next_x_vals.push_back(x_y_point[0]);
-		next_y_vals.push_back(x_y_point[1]);
-		
+		next_y_vals.push_back(x_y_point[1]);	
 	}
 	return{ next_x_vals, next_y_vals };
+}
+
+Sensor_fusion_car* Self_driving_car::get_car_exist_in_front_of_us(const float safe_dist_m)
+{
+	double car_s = this->car_s;
+	const int our_lane = convert_frenet_d_coord_to_lane_num(this->car_d);
+	if(previous_path_x.size() > 0)
+	{
+		car_s = end_path_s;
+	}
+	for(int i =0; i < this->sensor_fusion_cars.size(); ++i)
+	{
+		Sensor_fusion_car a_sensor_fusion_car = this->sensor_fusion_cars[i];
+		double other_d = a_sensor_fusion_car.get_d();
+		int other_lane = convert_frenet_d_coord_to_lane_num(other_d);
+		if(our_lane == other_lane)
+		{
+			double other_vx = a_sensor_fusion_car.get_vx();
+			double other_vy = a_sensor_fusion_car.get_vy();
+			double other_speed_magnitude = sqrt(other_vx * other_vx + other_vy * other_vy);
+			double other_s = a_sensor_fusion_car.get_s();
+
+			other_s += this->previous_path_x.size() * 0.02 * other_speed_magnitude;
+			if(other_s > car_s && other_s - car_s < safe_dist_m)
+			{
+				return &this->sensor_fusion_cars[i];
+			}
+		}
+	}
+	return nullptr;
 }

@@ -2,6 +2,7 @@
 #include <vector>
 
 class Road_points;
+class Sensor_fusion_car;
 
 class Self_driving_car
 {
@@ -106,6 +107,16 @@ public:
 		this->end_path_d = end_path_d;
 	}
 
+	std::vector<Sensor_fusion_car> get_sensor_fusion_cars() const
+	{
+		return sensor_fusion_cars;
+	}
+
+	void set_sensor_fusion_cars(const std::vector<Sensor_fusion_car> sensor_fusion_cars)
+	{
+		this->sensor_fusion_cars = sensor_fusion_cars;
+	}
+
 private:
 	double car_x;
 	double car_y;
@@ -120,13 +131,14 @@ private:
 	double end_path_s;
 	double end_path_d;
 
-	//auto sensor_fusion;
-
+	std::vector<Sensor_fusion_car> sensor_fusion_cars;
+	
 	const Road_points &road_points;
 
 	std::vector<double> convert_frenet_to_cartesian_coordinates(const double s, const double d) const;
 	void transform_from_world_to_car_coordinates(std::vector<double>& ptsx, std::vector<double>& ptsy, const double car_ref_x, const double car_ref_y, const double car_ref_yaw);
 	std::vector<double> transform_from_car_to_world_coordinates(const double ptx_car_coordinates, const double pty_car_coordinates, const double car_ref_x, const double car_ref_y, const double car_ref_yaw) const;
+	Sensor_fusion_car* get_car_exist_in_front_of_us(const float safe_dist_m);
 public:
 	Self_driving_car(const Road_points& road_points);
 	~Self_driving_car();

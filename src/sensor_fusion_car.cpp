@@ -20,3 +20,9 @@ const std::vector<Sensor_fusion_car> Sensor_fusion_builder::parse_sensor_fusion_
 	}
 	return other_cars;
 }
+
+double Sensor_fusion_car::get_car_speed() const
+{
+	const double speed_magnitude = sqrt(vx * vx + vy * vy);
+	return speed_magnitude;
+}

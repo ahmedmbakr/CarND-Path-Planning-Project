@@ -60,6 +60,8 @@ public:
 	{
 		return d;
 	}
+
+	double get_car_speed() const;
 };
 
 class Sensor_fusion_builder

@@ -15,6 +15,11 @@ std::vector<double> Self_driving_car::convert_frenet_to_cartesian_coordinates(co
 	return getXY(s, d, road_points.map_waypoints_s, road_points.map_waypoints_x, road_points.map_waypoints_y);
 }
 
+std::vector<double> Self_driving_car::convert_cartesian_to_frenet_coordinates(const double x, const double y) const
+{
+	return getFrenet(x, y, deg2rad(this->car_yaw), road_points.map_waypoints_x, road_points.map_waypoints_y);
+}
+
 //car reference yaw must be in radians
 //This function changes the first two parameters [ptsx, ptsy]
 void Self_driving_car::transform_from_world_to_car_coordinates(std::vector<double>& ptsx, std::vector<double>& ptsy, const double car_ref_x, const double car_ref_y, const double car_ref_yaw)
@@ -54,7 +59,7 @@ Self_driving_car::~Self_driving_car()
 
 vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 {
-	int lane_num = 1;//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
+	int lane_num = convert_frenet_d_coord_to_lane_num(this->car_d);//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
 	double target_velocity_at_end_of_trajectory = ref_velocity;
 	Sensor_fusion_car* car_exist_in_front_of_us = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M);
 	if(car_exist_in_front_of_us != nullptr)
@@ -63,7 +68,19 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 		double other_vx = car_exist_in_front_of_us->get_vx();
 		double other_vy = car_exist_in_front_of_us->get_vy();
 		double other_velocity = sqrt(other_vx * other_vx + other_vy * other_vy);
-		target_velocity_at_end_of_trajectory = other_velocity;
+		states new_state = is_eligible_to_change_lane();
+		if(new_state == CHANGE_LANE_LEFT)
+		{
+			lane_num -= 1;
+		}
+		else if(new_state == CHANGE_LANE_RIGHT)
+		{
+			lane_num += 1;
+		}
+		else
+		{
+			target_velocity_at_end_of_trajectory = other_velocity;
+		}
 	}
 	else if(ref_velocity < CAR_MAX_VELOCITY)
 	{
@@ -102,9 +119,10 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 		ptsy.push_back(ref_y);
 	}
 
+	const double d_val = convert_lane_num_to_d(lane_num);
 	for(int i = 1; i <= 3;++i)
 	{
-		vector<double> next_mp = convert_frenet_to_cartesian_coordinates(car_s + i * 30, car_d);//TODO: you need to change this to 60 or even higher if you change NUM_POINTS_FOR_TRAJECTORY or you will get an error
+		vector<double> next_mp = convert_frenet_to_cartesian_coordinates(car_s + i * 30 + 15, d_val);//TODO: you need to change this to 60 or even higher if you change NUM_POINTS_FOR_TRAJECTORY or you will get an error
 		ptsx.push_back(next_mp[0]);
 		ptsy.push_back(next_mp[1]);
 	}
@@ -150,6 +168,37 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 	return{ next_x_vals, next_y_vals };
 }
 
+//Get the speed of the car in the lane specified within range[-safe_dist ... safe_dist]
+double Self_driving_car::get_traffic_speed_in_lane(int lane_num, double safe_dist_m)
+{
+	double car_s = this->car_s;
+	if (previous_path_x.size() > 0)
+	{
+		car_s = end_path_s;
+	}
+	for (int i = 0; i < this->sensor_fusion_cars.size(); ++i)
+	{
+		Sensor_fusion_car a_sensor_fusion_car = this->sensor_fusion_cars[i];
+		double other_d = a_sensor_fusion_car.get_d();
+		int other_lane = convert_frenet_d_coord_to_lane_num(other_d);
+		if (lane_num == other_lane)
+		{
+			double other_vx = a_sensor_fusion_car.get_vx();
+			double other_vy = a_sensor_fusion_car.get_vy();
+			double other_speed_magnitude = sqrt(other_vx * other_vx + other_vy * other_vy);
+			double other_s = a_sensor_fusion_car.get_s();
+
+			other_s += this->previous_path_x.size() * CAR_UPDATE_POSITION_RATE * other_speed_magnitude;
+			if ( (other_s < car_s && car_s - other_s < safe_dist_m)
+				|| (other_s > car_s && other_s - car_s < safe_dist_m))
+			{
+				return other_speed_magnitude;
+			}
+		}
+	}
+	return CAR_MAX_VELOCITY;
+}
+
 Sensor_fusion_car* Self_driving_car::get_car_exist_in_front_of_us(const float safe_dist_m)
 {
 	double car_s = this->car_s;
@@ -170,8 +219,36 @@ Sensor_fusion_car* Self_driving_car::get_car_exist_in_front_of_us(const float sa
 			double other_speed_magnitude = sqrt(other_vx * other_vx + other_vy * other_vy);
 			double other_s = a_sensor_fusion_car.get_s();
 
-			other_s += this->previous_path_x.size() * 0.02 * other_speed_magnitude;
+			other_s += this->previous_path_x.size() * CAR_UPDATE_POSITION_RATE * other_speed_magnitude;
 			if(other_s > car_s && other_s - car_s < safe_dist_m)
+			{
+				return &this->sensor_fusion_cars[i];
+			}
+		}
+	}
+	return nullptr;
+}
+
+//The nearest car can be behind or above us in a specific lane
+Sensor_fusion_car* Self_driving_car::get_nearest_car_in_lane(const int lane_num, const double safe_dist_m)
+{
+	double car_s = this->car_s;
+	if (previous_path_x.size() > 0)
+	{
+		car_s = end_path_s;
+	}
+	for (int i = 0; i < this->sensor_fusion_cars.size(); ++i)
+	{
+		Sensor_fusion_car a_sensor_fusion_car = this->sensor_fusion_cars[i];
+		double other_d = a_sensor_fusion_car.get_d();
+		int other_lane = convert_frenet_d_coord_to_lane_num(other_d);
+		if (lane_num == other_lane)
+		{
+			double other_speed_magnitude = a_sensor_fusion_car.get_car_speed();
+			double other_s = a_sensor_fusion_car.get_s();
+
+			other_s += this->previous_path_x.size() * CAR_UPDATE_POSITION_RATE * other_speed_magnitude;
+			if (abs(other_s - car_s) < safe_dist_m)
 			{
 				return &this->sensor_fusion_cars[i];
 			}
@@ -187,4 +264,38 @@ double Self_driving_car::get_velocity_increment_rate(double v0, double vt, int n
 	if (abs(velocity_inc) >= CAR_MAX_VELOCITY_INCREMENT_RATE)
 		velocity_inc = sign * CAR_MAX_VELOCITY_INCREMENT_RATE;
 	return velocity_inc;
+}
+
+Self_driving_car::states Self_driving_car::is_eligible_to_change_lane()
+{
+	const int lane_num = convert_frenet_d_coord_to_lane_num(this->car_d);
+	cout << "car lane num: " << lane_num<<endl;
+	const int left_lane = (lane_num - 1);
+	const bool is_left_lane_exist = left_lane >= 0 && left_lane < NUM_LANES;
+
+	const int right_lane = (lane_num + 1);
+	const bool is_right_lane_exist = right_lane >= 0 && right_lane < NUM_LANES;
+
+	double left_lane_speed = 0;
+	double right_lane_speed = 0;
+	if(is_left_lane_exist)
+	{
+		//double lane_speed = get_traffic_speed_in_lane(left_lane, CAR_SAFE_DISTANCE_M);
+		Sensor_fusion_car* car_in_left_lane = get_nearest_car_in_lane(left_lane, CAR_SAFE_DISTANCE_M);
+		left_lane_speed = car_in_left_lane == nullptr ? CAR_MAX_VELOCITY : car_in_left_lane->get_car_speed();
+	}
+	if (is_right_lane_exist)
+	{
+		//double lane_speed = get_traffic_speed_in_lane(right_lane, CAR_SAFE_DISTANCE_M);
+		Sensor_fusion_car* car_in_right_lane = get_nearest_car_in_lane(right_lane, CAR_SAFE_DISTANCE_M);
+		right_lane_speed = car_in_right_lane == nullptr ? CAR_MAX_VELOCITY : car_in_right_lane->get_car_speed();	
+	}
+	cout << "left lane speed: " << left_lane_speed << endl;
+	cout << "right lane speed: " << right_lane_speed << endl;
+	cout << "current lane speed: " << this->ref_velocity << endl;
+	if (left_lane_speed >= right_lane_speed && left_lane_speed > this->ref_velocity)
+		return CHANGE_LANE_LEFT;
+	else if (right_lane_speed >= left_lane_speed && right_lane_speed > this->ref_velocity)
+		return CHANGE_LANE_RIGHT;
+	return KEEP_LANE;
 }

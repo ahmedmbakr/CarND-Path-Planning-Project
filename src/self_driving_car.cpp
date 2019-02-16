@@ -6,6 +6,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "sensor_fusion_car.h"
 #include <iostream>
+#include <openssl/rsa.h>
 
 using namespace std;
 
@@ -124,7 +125,7 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
 	}
 
 	//calculate how to break up spline points so that we travel at our desired reference velocity
-	const double target_x = 30.0;//Draw a trajectory for 30 meters ahead the car's current position
+	const double target_x = 60.0;//Draw a trajectory for 60 meters ahead the car's current position
 	const double target_y = s(target_x);
 	const double target_dist = sqrt(target_x * target_x + target_y * target_y);
 	const int num_remaining_points_to_compute = NUM_POINTS_FOR_TRAJECTORY - previous_path_x.size();

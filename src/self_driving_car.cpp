@@ -268,34 +268,44 @@ double Self_driving_car::get_velocity_increment_rate(double v0, double vt, int n
 
 Self_driving_car::states Self_driving_car::is_eligible_to_change_lane()
 {
-	const int lane_num = convert_frenet_d_coord_to_lane_num(this->car_d);
-	cout << "car lane num: " << lane_num<<endl;
-	const int left_lane = (lane_num - 1);
-	const bool is_left_lane_exist = left_lane >= 0 && left_lane < NUM_LANES;
-
-	const int right_lane = (lane_num + 1);
-	const bool is_right_lane_exist = right_lane >= 0 && right_lane < NUM_LANES;
-
-	double left_lane_speed = 0;
-	double right_lane_speed = 0;
-	if(is_left_lane_exist)
+	const int current_lane_num = convert_frenet_d_coord_to_lane_num(this->car_d);
+	vector<double> lane_speeds(NUM_LANES);
+	int max_lane_speed_idx = 0;
+	double max_lane_speed = 0;
+	for(int lane_num = 0;lane_num < NUM_LANES; ++lane_num)
 	{
-		//double lane_speed = get_traffic_speed_in_lane(left_lane, CAR_SAFE_DISTANCE_M);
-		Sensor_fusion_car* car_in_left_lane = get_nearest_car_in_lane(left_lane, CAR_SAFE_DISTANCE_M);
-		left_lane_speed = car_in_left_lane == nullptr ? CAR_MAX_VELOCITY : car_in_left_lane->get_car_speed();
+		double lane_speed = CAR_MAX_VELOCITY;
+		Sensor_fusion_car* car_in_a_lane = get_nearest_car_in_lane(lane_num, CAR_SAFE_DISTANCE_M);
+		lane_speed = car_in_a_lane == nullptr ? CAR_MAX_VELOCITY : car_in_a_lane->get_car_speed();
+		if(lane_num == current_lane_num)
+		{
+			lane_speed = min(lane_speed, this->ref_velocity);
+		}
+
+		if (max_lane_speed < lane_speed 
+			|| (max_lane_speed == lane_speed 
+			    && abs(max_lane_speed_idx - current_lane_num) > abs(lane_num - current_lane_num)))
+		{
+			max_lane_speed = lane_speed;
+			max_lane_speed_idx = lane_num;
+		}
+		cout << "lane "<< lane_num <<" speed: " << lane_speed << endl;
+		lane_speeds[lane_num] = lane_speed;
 	}
-	if (is_right_lane_exist)
-	{
-		//double lane_speed = get_traffic_speed_in_lane(right_lane, CAR_SAFE_DISTANCE_M);
-		Sensor_fusion_car* car_in_right_lane = get_nearest_car_in_lane(right_lane, CAR_SAFE_DISTANCE_M);
-		right_lane_speed = car_in_right_lane == nullptr ? CAR_MAX_VELOCITY : car_in_right_lane->get_car_speed();	
+
+	if(max_lane_speed_idx < current_lane_num)
+	{//We should try to go left
+		if (max_lane_speed_idx + 1 == current_lane_num)
+			return CHANGE_LANE_LEFT;
+		else
+			return PREP_CHANGE_LANE_LEFT;
 	}
-	cout << "left lane speed: " << left_lane_speed << endl;
-	cout << "right lane speed: " << right_lane_speed << endl;
-	cout << "current lane speed: " << this->ref_velocity << endl;
-	if (left_lane_speed >= right_lane_speed && left_lane_speed > this->ref_velocity)
-		return CHANGE_LANE_LEFT;
-	else if (right_lane_speed >= left_lane_speed && right_lane_speed > this->ref_velocity)
-		return CHANGE_LANE_RIGHT;
+	else if (max_lane_speed_idx > current_lane_num)
+	{//We should try to go right
+		if (max_lane_speed_idx - 1 == current_lane_num)
+			return CHANGE_LANE_RIGHT;
+		else
+			return PREP_CHANGE_LANE_RIGHT;
+	}
 	return KEEP_LANE;
 }

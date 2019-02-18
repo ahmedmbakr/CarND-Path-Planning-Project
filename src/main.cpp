@@ -104,7 +104,7 @@ int main() {
 					car.set_end_path_s(end_path_s);
 					car.set_end_path_d(end_path_d);
 
-					auto x_y_vector_vals = car.move_forward_in_current_lane();
+					auto x_y_vector_vals = car.move();
 
 					msgJson["next_x"] = x_y_vector_vals[0];
 					msgJson["next_y"] = x_y_vector_vals[1];

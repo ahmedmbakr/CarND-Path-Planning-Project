@@ -7,8 +7,51 @@
 #include "sensor_fusion_car.h"
 #include <iostream>
 #include <openssl/rsa.h>
+#include <functional>
 
 using namespace std;
+
+std::vector<std::vector<double>> Self_driving_car::move()
+{
+	std::vector<std::vector<double>> x_y_trajectory_points;
+
+	double target_velocity_at_end_of_trajectory = ref_velocity;
+	Sensor_fusion_car* car_exist_in_front_of_us = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M);
+	if (car_exist_in_front_of_us != nullptr)
+	{
+		current_state = is_eligible_to_change_lane();
+	}
+	else
+	{
+		current_state = KEEP_LANE;
+	}
+
+	switch(current_state)
+	{
+	case KEEP_LANE: 
+		target_velocity_at_end_of_trajectory = car_exist_in_front_of_us == nullptr ? CAR_MAX_VELOCITY :
+			car_exist_in_front_of_us->get_car_speed();
+		x_y_trajectory_points = move_forward_in_current_lane(target_velocity_at_end_of_trajectory);
+		break;
+	case CHANGE_LANE_LEFT:
+		x_y_trajectory_points = move_to_change_lane_left(target_velocity_at_end_of_trajectory);
+		break;
+	case CHANGE_LANE_RIGHT:
+		x_y_trajectory_points = move_to_change_lane_right(target_velocity_at_end_of_trajectory);
+		break;
+	default:
+		cout << "FATAL ERROR:no handler for the current_state in the state machine\n";
+		{//TODO: to be changed later when the preparation states are implemented
+			current_state = KEEP_LANE; 
+			target_velocity_at_end_of_trajectory = car_exist_in_front_of_us == nullptr ? CAR_MAX_VELOCITY :
+				car_exist_in_front_of_us->get_car_speed();
+			x_y_trajectory_points = move_forward_in_current_lane(target_velocity_at_end_of_trajectory);
+		}
+		//exit(1);
+		break;
+	}
+	return x_y_trajectory_points;
+}
 
 std::vector<double> Self_driving_car::convert_frenet_to_cartesian_coordinates(const double s,const double d) const
 {
@@ -48,7 +91,7 @@ vector<double> Self_driving_car::transform_from_car_to_world_coordinates(const d
 
 Self_driving_car::Self_driving_car(const Road_points &road_points) : car_x(0), car_y(0), car_s(0), car_d(0), car_yaw(0),
                                                                      car_speed(0), end_path_s(0), end_path_d(0),
-                                                                     road_points(road_points), ref_velocity(0)
+                                                                     road_points(road_points), ref_velocity(0), current_state(KEEP_LANE)
 {
 }
 
@@ -57,35 +100,30 @@ Self_driving_car::~Self_driving_car()
 {
 }
 
-vector<vector<double>> Self_driving_car::move_forward_in_current_lane()
+std::vector<std::vector<double>> Self_driving_car::move_to_change_lane_left(double target_velocity_at_end_of_trajectory)
+{
+	int lane_num = convert_frenet_d_coord_to_lane_num(this->car_d) - 1;//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
+	assert(lane_num >= 0 && lane_num < NUM_LANES);
+	return move_to_lane(lane_num, target_velocity_at_end_of_trajectory);
+}
+
+std::vector<std::vector<double>> Self_driving_car::move_to_change_lane_right(double target_velocity_at_end_of_trajectory)
+{
+	int lane_num = convert_frenet_d_coord_to_lane_num(this->car_d) + 1;//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
+	assert(lane_num >= 0 && lane_num < NUM_LANES);
+	return move_to_lane(lane_num, target_velocity_at_end_of_trajectory);
+}
+
+vector<vector<double>> Self_driving_car::move_forward_in_current_lane(double target_velocity_at_end_of_trajectory)
 {
 	int lane_num = convert_frenet_d_coord_to_lane_num(this->car_d);//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
-	double target_velocity_at_end_of_trajectory = ref_velocity;
-	Sensor_fusion_car* car_exist_in_front_of_us = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M);
-	if(car_exist_in_front_of_us != nullptr)
-	{
-		//TODO: I need to check if I can change lane in this case
-		double other_vx = car_exist_in_front_of_us->get_vx();
-		double other_vy = car_exist_in_front_of_us->get_vy();
-		double other_velocity = sqrt(other_vx * other_vx + other_vy * other_vy);
-		states new_state = is_eligible_to_change_lane();
-		if(new_state == CHANGE_LANE_LEFT)
-		{
-			lane_num -= 1;
-		}
-		else if(new_state == CHANGE_LANE_RIGHT)
-		{
-			lane_num += 1;
-		}
-		else
-		{
-			target_velocity_at_end_of_trajectory = other_velocity;
-		}
-	}
-	else if(ref_velocity < CAR_MAX_VELOCITY)
-	{
-		target_velocity_at_end_of_trajectory = CAR_MAX_VELOCITY;
-	}
+	assert(lane_num >= 0 && lane_num < NUM_LANES);
+	return move_to_lane(lane_num, target_velocity_at_end_of_trajectory);
+}
+
+std::vector<std::vector<double>> Self_driving_car::move_to_lane(int lane_num,
+	double target_velocity_at_end_of_trajectory)
+{
 	int prev_size = previous_path_x.size();
 	vector<double> ptsx;
 	vector<double> ptsy;

@@ -136,7 +136,6 @@ private:
 	std::vector<Sensor_fusion_car> sensor_fusion_cars;
 	
 	const Road_points &road_points;
-
 	std::vector<double> convert_frenet_to_cartesian_coordinates(const double s, const double d) const;
 	std::vector<double> convert_cartesian_to_frenet_coordinates(const double x, const double y) const;
 	void transform_from_world_to_car_coordinates(std::vector<double>& ptsx, std::vector<double>& ptsy, const double car_ref_x, const double car_ref_y, const double car_ref_yaw);
@@ -156,8 +155,13 @@ public:
 	Self_driving_car(const Road_points& road_points);
 	~Self_driving_car();
 
-	std::vector<std::vector<double>> move_forward_in_current_lane();
+	std::vector<std::vector<double>> move();
+	std::vector<std::vector<double>> move_forward_in_current_lane(double target_velocity_at_end_of_trajectory);
+	std::vector<std::vector<double>> move_to_change_lane_left(double target_velocity_at_end_of_trajectory);
+	std::vector<std::vector<double>> move_to_change_lane_right(double target_velocity_at_end_of_trajectory);
+	std::vector<std::vector<double>> move_to_lane(int lane_num, double target_velocity);
 private:
+	states current_state;
 	double get_traffic_speed_in_lane(int lane_num, double safe_dist);
 	states is_eligible_to_change_lane();
 };

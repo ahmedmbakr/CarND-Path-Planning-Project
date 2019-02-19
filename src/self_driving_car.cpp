@@ -55,12 +55,12 @@ std::vector<std::vector<double>> Self_driving_car::move()
 
 std::vector<double> Self_driving_car::convert_frenet_to_cartesian_coordinates(const double s,const double d) const
 {
-	return getXY(s, d, road_points.map_waypoints_s, road_points.map_waypoints_x, road_points.map_waypoints_y);
+	return getXY(s, d, road_points);
 }
 
 std::vector<double> Self_driving_car::convert_cartesian_to_frenet_coordinates(const double x, const double y) const
 {
-	return getFrenet(x, y, deg2rad(this->car_yaw), road_points.map_waypoints_x, road_points.map_waypoints_y);
+	return getFrenet(x, y, deg2rad(this->car_yaw), road_points);
 }
 
 //car reference yaw must be in radians

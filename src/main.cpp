@@ -10,6 +10,7 @@
 #include "Road_points.h"
 #include "self_driving_car.h"
 #include "sensor_fusion_car.h"
+#include "helpers.h"
 
 // for convenience
 using nlohmann::json;
@@ -19,7 +20,6 @@ int main() {
 	uWS::Hub h;
 
 	// Load up map values for waypoint's x,y,s and d normalized normal vectors
-	Road_points road_points;
 
 	// Waypoint map to read from
 	string file_path = __FILE__;
@@ -27,6 +27,11 @@ int main() {
 	string map_file_ = dir_path + "/../data/highway_map.csv";
 	// The max s value before wrapping around the track back to 0
 	double max_s = 6945.554;
+	vector<double> map_waypoints_x;
+	vector<double> map_waypoints_y;
+	vector<double> map_waypoints_s;
+	vector<double> map_waypoints_dx;
+	vector<double> map_waypoints_dy;
 
 	std::ifstream in_map_(map_file_.c_str(), std::ifstream::in);
 	string line;
@@ -42,13 +47,13 @@ int main() {
 		iss >> s;
 		iss >> d_x;
 		iss >> d_y;
-		road_points.map_waypoints_x.push_back(x);
-		road_points.map_waypoints_y.push_back(y);
-		road_points.map_waypoints_s.push_back(s);
-		road_points.map_waypoints_dx.push_back(d_x);
-		road_points.map_waypoints_dy.push_back(d_y);
+		map_waypoints_x.push_back(x);
+		map_waypoints_y.push_back(y);
+		map_waypoints_s.push_back(s);
+		map_waypoints_dx.push_back(d_x);
+		map_waypoints_dy.push_back(d_y);
 	}
-
+	const Road_points road_points(map_waypoints_x, map_waypoints_y, map_waypoints_s, map_waypoints_dx, map_waypoints_dy);
 	Self_driving_car car(road_points);
 
 	h.onMessage([&car]

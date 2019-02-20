@@ -25,23 +25,23 @@ std::vector<std::vector<double>> Self_driving_car::move()
 	}
 	case KEEP_LANE: 
 		cout << "execute keep_lane\n";
-		x_y_trajectory_points = move_forward_in_current_lane(target_velocity_at_end_of_trajectory);
+		x_y_trajectory_points = move_forward_in_current_lane();
 		break;
 	case CHANGE_LANE_LEFT:
 		cout << "execute change_lane_left\n";
-		x_y_trajectory_points = move_to_change_lane_left(target_velocity_at_end_of_trajectory);
+		x_y_trajectory_points = move_to_change_lane_left();
 		break;
 	case CHANGE_LANE_RIGHT:
 		cout << "execute change_lane_right\n";
-		x_y_trajectory_points = move_to_change_lane_right(target_velocity_at_end_of_trajectory);
+		x_y_trajectory_points = move_to_change_lane_right();
 		break;
 	case PREP_CHANGE_LANE_LEFT:
 		cout << "execute prep_change_lane_left\n";
-		x_y_trajectory_points = move_to_prep_change_lane_left(target_velocity_at_end_of_trajectory);
+		x_y_trajectory_points = move_to_prep_change_lane_left();
 		break;
 	case PREP_CHANGE_LANE_RIGHT:
 		cout << "execute prep_change_lane_right\n";
-		x_y_trajectory_points = move_to_prep_change_lane_right(target_velocity_at_end_of_trajectory);
+		x_y_trajectory_points = move_to_prep_change_lane_right();
 		break;
 	}
 	return x_y_trajectory_points;
@@ -94,21 +94,21 @@ Self_driving_car::~Self_driving_car()
 {
 }
 
-std::vector<std::vector<double>> Self_driving_car::move_to_change_lane_left(double target_velocity_at_end_of_trajectory)
+std::vector<std::vector<double>> Self_driving_car::move_to_change_lane_left( )
 {
 	double target_lane = convert_frenet_d_coord_to_lane_num(this->car_d) - 1;
-	vector<vector<double>> x_y_trajectory = change_to_lane(target_velocity_at_end_of_trajectory, target_lane);
+	vector<vector<double>> x_y_trajectory = change_to_lane(target_lane);
 	return x_y_trajectory;
 }
 
-std::vector<std::vector<double>> Self_driving_car::move_to_change_lane_right(double target_velocity_at_end_of_trajectory)
+std::vector<std::vector<double>> Self_driving_car::move_to_change_lane_right( )
 {
 	double target_lane = convert_frenet_d_coord_to_lane_num(this->car_d) + 1;
-	vector<vector<double>> x_y_trajectory = change_to_lane(target_velocity_at_end_of_trajectory, target_lane);
+	vector<vector<double>> x_y_trajectory = change_to_lane(target_lane);
 	return x_y_trajectory;
 }
 
-std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left(double target_velocity_at_end_of_trajectory)
+std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left( )
 {
 	static int counter = 0;//number of times the state remains in prepare change lane left
 	const int time_in_sec = counter * CAR_UPDATE_POSITION_RATE;
@@ -126,10 +126,11 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left
 	const int intended_lane = current_lane - 1;
 	Sensor_fusion_car* nearest_car_in_intended_lane =  get_nearest_car_in_lane(intended_lane, CAR_SAFE_DISTANCE_M);
 	Sensor_fusion_car* nearest_car_in_current_lane = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M, current_lane);
+	double target_velocity_at_end_of_trajectory = this->ref_velocity;
 	if(nearest_car_in_current_lane != nullptr)
 	{
 		//we want the speed to be less than the car in the other lane so that we can pass it
-		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_current_lane->get_car_speed()) - 2;
+		target_velocity_at_end_of_trajectory = nearest_car_in_current_lane->get_car_speed();
 	}
 	if(nearest_car_in_intended_lane == nullptr)
 	{
@@ -142,11 +143,11 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left
 	{
 		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed());
 	}
-	return move_forward_in_current_lane(target_velocity_at_end_of_trajectory);
+	//TODO: we may need to add the speed here to use target_velocity_at_end_of_trajectory variable
+	return move_forward_in_current_lane();
 }
 
-std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_right(
-	double target_velocity_at_end_of_trajectory)
+std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_right()
 {
 	static int counter = 0;//number of times the state remains in prepare change lane left
 	const int time_in_sec = counter * CAR_UPDATE_POSITION_RATE;
@@ -164,10 +165,11 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_righ
 	const int intended_lane = current_lane + 1;
 	Sensor_fusion_car* nearest_car_in_intended_lane = get_nearest_car_in_lane(intended_lane, CAR_SAFE_DISTANCE_M);
 	Sensor_fusion_car* nearest_car_in_current_lane = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M, current_lane);
+	double target_velocity_at_end_of_trajectory = this->ref_velocity;
 	if (nearest_car_in_current_lane != nullptr)
 	{
 		//we want the speed to be less than the car in the other lane so that we can pass it
-		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_current_lane->get_car_speed()) - 2;
+		target_velocity_at_end_of_trajectory = nearest_car_in_current_lane->get_car_speed() - 2;
 	}
 	if (nearest_car_in_intended_lane == nullptr)
 	{
@@ -179,13 +181,14 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_righ
 	{
 		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed()) ;
 	}
-	return move_forward_in_current_lane(target_velocity_at_end_of_trajectory);
+	//TODO: we may need to add the speed here to use target_velocity_at_end_of_trajectory variable
+	return move_forward_in_current_lane();
 }
 
-vector<vector<double>> Self_driving_car::move_forward_in_current_lane(double target_velocity_at_end_of_trajectory)
+vector<vector<double>> Self_driving_car::move_forward_in_current_lane( )
 {
 	int our_lane = convert_frenet_d_coord_to_lane_num(this->get_car_d());
-	target_velocity_at_end_of_trajectory = get_traffic_speed_in_lane(our_lane, CAR_SAFE_DISTANCE_M);
+	double target_velocity_at_end_of_trajectory = get_traffic_speed_in_lane(our_lane, CAR_SAFE_DISTANCE_M);
 	Sensor_fusion_car* car_exist_in_front_of_us = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M, our_lane);
 	if (car_exist_in_front_of_us != nullptr)
 	{
@@ -197,7 +200,7 @@ vector<vector<double>> Self_driving_car::move_forward_in_current_lane(double tar
 	return move_to_lane(our_lane, target_velocity_at_end_of_trajectory);
 }
 
-vector<vector<double>> Self_driving_car::change_to_lane(double target_velocity_at_end_of_trajectory, double target_lane)
+vector<vector<double>> Self_driving_car::change_to_lane(double target_lane)
 {
 	static int intended_lane = -1;//-1 means that there is no intended lane yet
 	int lane_num;//lane numbers are 0->left-lane, 1 middle-lane, 2->right-lane
@@ -216,7 +219,7 @@ vector<vector<double>> Self_driving_car::change_to_lane(double target_velocity_a
 	{
 		lane_num = intended_lane;
 	}
-	target_velocity_at_end_of_trajectory = get_traffic_speed_in_lane(intended_lane, CAR_SAFE_DISTANCE_M);
+	double target_velocity_at_end_of_trajectory = get_traffic_speed_in_lane(intended_lane, CAR_SAFE_DISTANCE_M);
 	assert(lane_num >= 0 && lane_num < NUM_LANES);
 	vector<std::vector<double>> x_y_trajectory = move_to_lane(lane_num, target_velocity_at_end_of_trajectory);
 	static int count_num_times_car_is_intended_lane = 0;

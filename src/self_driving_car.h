@@ -156,12 +156,13 @@ public:
 	~Self_driving_car();
 
 	std::vector<std::vector<double>> move();
-	std::vector<std::vector<double>> move_forward_in_current_lane(double target_velocity_at_end_of_trajectory);
-	std::vector<std::vector<double>> change_to_lane(double target_velocity_at_end_of_trajectory, double target_lane);
-	std::vector<std::vector<double>> move_to_change_lane_left(double target_velocity_at_end_of_trajectory);
-	std::vector<std::vector<double>> move_to_change_lane_right(double target_velocity_at_end_of_trajectory);
-	std::vector<std::vector<double>> move_to_prep_change_lane_left(double target_velocity_at_end_of_trajectory);
-	std::vector<std::vector<double>> move_to_prep_change_lane_right(double target_velocity_at_end_of_trajectory);
+	std::vector<std::vector<double>> move_forward_in_current_lane();
+	std::vector<std::vector<double>> change_to_lane(double target_lane);
+	std::vector<std::vector<double>> move_to_change_lane_left();
+	std::vector<std::vector<double>> move_to_change_lane_right();
+	std::vector<std::vector<double>> move_to_prep_change_lane(states state);
+	std::vector<std::vector<double>> move_to_prep_change_lane_left();
+	std::vector<std::vector<double>> move_to_prep_change_lane_right();
 	std::vector<std::vector<double>> move_to_lane(int lane_num, double target_velocity);
 private:
 	class State {

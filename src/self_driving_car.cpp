@@ -14,15 +14,12 @@ using namespace std;
 std::vector<std::vector<double>> Self_driving_car::move()
 {
 	std::vector<std::vector<double>> x_y_trajectory_points;
-	double target_velocity_at_end_of_trajectory = 0;//TODO: dummy and may need to be removed
 
 	switch(this->state.get_current_state())
 	{
 	default:
-	{//TODO: to be changed later when the preparation states are implemented
 		cout << "ERROR: Undefined state !!! I will keep lane\n";
 		this->state.update_current_state(KEEP_LANE);
-	}
 	case KEEP_LANE: 
 		cout << "execute keep_lane\n";
 		x_y_trajectory_points = move_forward_in_current_lane();
@@ -141,10 +138,9 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left
 	}
 	else 
 	{
-		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed());
+		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed() - 1);
 	}
-	//TODO: we may need to add the speed here to use target_velocity_at_end_of_trajectory variable
-	return move_forward_in_current_lane();
+	return move_to_lane(current_lane, target_velocity_at_end_of_trajectory);
 }
 
 std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_right()
@@ -179,16 +175,15 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_righ
 	}
 	else
 	{
-		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed()) ;
+		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed() - 1);
 	}
-	//TODO: we may need to add the speed here to use target_velocity_at_end_of_trajectory variable
-	return move_forward_in_current_lane();
+	return move_to_lane(current_lane, target_velocity_at_end_of_trajectory);
 }
 
 vector<vector<double>> Self_driving_car::move_forward_in_current_lane( )
 {
 	int our_lane = convert_frenet_d_coord_to_lane_num(this->get_car_d());
-	double target_velocity_at_end_of_trajectory = get_traffic_speed_in_lane(our_lane, CAR_SAFE_DISTANCE_M);
+	double target_velocity_at_end_of_trajectory = CAR_MAX_VELOCITY/*get_traffic_speed_in_lane(our_lane, CAR_SAFE_DISTANCE_M)*/;
 	Sensor_fusion_car* car_exist_in_front_of_us = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M, our_lane);
 	if (car_exist_in_front_of_us != nullptr)
 	{
@@ -449,6 +444,14 @@ Self_driving_car::states Self_driving_car::is_eligible_to_change_lane()
 	if(max_lane_speed_idx != current_lane_num && nearest_car_in_the_fastest_lane != nullptr)
 	{
 		return KEEP_LANE;
+	}
+
+	//This if condition is added to solve the problem of prepare lane change that is supposed for example to go [0,1,2] but intead it goes [0,1,0]
+	if(current_lane_num >= 1 && current_lane_num < NUM_LANES - 1 && lane_speeds[current_lane_num - 1] == lane_speeds[current_lane_num + 1]
+		&& max_lane_speed == lane_speeds[current_lane_num + 1])
+	{
+		if (this->state.get_prev_state() == CHANGE_LANE_LEFT || this->state.get_prev_state() == CHANGE_LANE_RIGHT)
+			return this->state.get_prev_state();
 	}
 	if(max_lane_speed_idx < current_lane_num)
 	{//We should try to go left

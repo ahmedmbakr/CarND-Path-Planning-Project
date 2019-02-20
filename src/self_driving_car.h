@@ -164,7 +164,16 @@ public:
 	std::vector<std::vector<double>> move_to_prep_change_lane_right(double target_velocity_at_end_of_trajectory);
 	std::vector<std::vector<double>> move_to_lane(int lane_num, double target_velocity);
 private:
-	states current_state;
+	class State {
+	private:
+		states current_state;
+		states previous_state;
+	public:
+		State();
+		states get_current_state() const { return current_state; }
+		states get_prev_state() const { return previous_state; }
+		void update_current_state(const states new_state);
+	}state;
 	double get_traffic_speed_in_lane(int lane_num, double safe_dist);
 	states is_eligible_to_change_lane();
 };

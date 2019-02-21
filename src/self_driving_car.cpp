@@ -133,7 +133,6 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left
 	{
 		counter = 0;//reset the counter
 		this->state.update_current_state(CHANGE_LANE_LEFT);//you are safe to change to right lane
-		target_velocity_at_end_of_trajectory = nearest_car_in_intended_lane->get_car_speed();
 		cout << "Finished prep_lane_shift, and going to change_lane_left\n";
 	}
 	else 

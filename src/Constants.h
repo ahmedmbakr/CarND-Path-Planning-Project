@@ -9,3 +9,4 @@
 #define CAR_MAX_VELOCITY_INCREMENT_RATE	 (CAR_UPDATE_POSITION_RATE * CAR_MAX_ACCELERATION_MPSS * 1.9) //TODO: I added 1.9 to reach acceleration of 9m/s2 but I do not know why, as when I remove it the max acceleration is 5 
 
 #define NUM_POINTS_FOR_TRAJECTORY 50 //if the car update position rate is 0.02 then each 50 points expects the position of the car in 1sec
+#define PREP_CHANGE_LANE_ABORT_TIME 3 //maximum time that is needed to get back to keep_lane if the change lane is not completed successfully in this period

@@ -108,18 +108,24 @@ std::vector<std::vector<double>> Self_driving_car::move_to_change_lane_right( )
 std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left( )
 {
 	static int counter = 0;//number of times the state remains in prepare change lane left
+	static int original_lane =  -1;
+	if(counter == 0)
+	{
+		original_lane = convert_frenet_d_coord_to_lane_num(this->get_car_d());
+	}
 	const int time_in_sec = counter * CAR_UPDATE_POSITION_RATE;
-	if(time_in_sec == 5)//if I am in this mode for 5 seconds
+	if(time_in_sec == PREP_CHANGE_LANE_ABORT_TIME)//if I am in this mode for 5 seconds
 	{
 		counter = 0;//reset the counter
 		this->state.update_current_state(KEEP_LANE);//Abort and get back to follow the car in front of us
 		cout << "Finished prep_lane_shift, and going to keep lane because of timeout\n";
+		return move_forward_in_current_lane();
 	}
 	else
 	{
 		counter++;
 	}
-	const int current_lane = convert_frenet_d_coord_to_lane_num(this->get_car_d());
+	int current_lane = original_lane;
 	const int intended_lane = current_lane - 1;
 	Sensor_fusion_car* nearest_car_in_intended_lane =  get_nearest_car_in_lane(intended_lane, CAR_SAFE_DISTANCE_M + 10);
 	Sensor_fusion_car* nearest_car_in_current_lane = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M, current_lane);
@@ -139,25 +145,32 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_left
 	{
 		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed() - 1);
 	}
-	target_velocity_at_end_of_trajectory = max(target_velocity_at_end_of_trajectory, 15.0);
+	//target_velocity_at_end_of_trajectory = max(target_velocity_at_end_of_trajectory, 15.0);
+	cout << "current_lane is: " << current_lane << endl;
 	return move_to_lane(current_lane, target_velocity_at_end_of_trajectory);
 }
 
 std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_right()
 {
 	static int counter = 0;//number of times the state remains in prepare change lane left
+	static int original_lane = -1;
+	if (counter == 0)
+	{
+		original_lane = convert_frenet_d_coord_to_lane_num(this->get_car_d());
+	}
 	const int time_in_sec = counter * CAR_UPDATE_POSITION_RATE;
-	if (time_in_sec == 5)//if I am in this mode for 5 seconds
+	if (time_in_sec == PREP_CHANGE_LANE_ABORT_TIME)//if I am in this mode for 5 seconds
 	{
 		counter = 0;//reset the counter
 		this->state.update_current_state(KEEP_LANE);//Abort and get back to follow the car in front of us
 		cout << "Finished prep_lane_shift, and going to keep lane because of timeout\n";
+		return move_forward_in_current_lane();
 	}
 	else
 	{
 		counter++;
 	}
-	const int current_lane = convert_frenet_d_coord_to_lane_num(this->get_car_d());
+	int current_lane = original_lane;
 	const int intended_lane = current_lane + 1;
 	Sensor_fusion_car* nearest_car_in_intended_lane = get_nearest_car_in_lane(intended_lane, CAR_SAFE_DISTANCE_M + 10);
 	Sensor_fusion_car* nearest_car_in_current_lane = get_car_exist_in_front_of_us(CAR_SAFE_DISTANCE_M, current_lane);
@@ -177,7 +190,8 @@ std::vector<std::vector<double>> Self_driving_car::move_to_prep_change_lane_righ
 	{
 		target_velocity_at_end_of_trajectory = min(target_velocity_at_end_of_trajectory, nearest_car_in_intended_lane->get_car_speed() - 1);
 	}
-	target_velocity_at_end_of_trajectory = max(target_velocity_at_end_of_trajectory, 15.0);
+	//target_velocity_at_end_of_trajectory = max(target_velocity_at_end_of_trajectory, 15.0);
+	cout << "current_lane is: " << current_lane << endl;
 	return move_to_lane(current_lane, target_velocity_at_end_of_trajectory);
 }
 
@@ -279,7 +293,7 @@ std::vector<std::vector<double>> Self_driving_car::move_to_lane(int lane_num,
 	const double d_val = convert_lane_num_to_d(lane_num);
 	for(int i = 1; i <= 3;++i)
 	{
-		vector<double> next_mp = convert_frenet_to_cartesian_coordinates(car_s + i * 30 + 15, d_val);//TODO: you need to change this to 60 or even higher if you change NUM_POINTS_FOR_TRAJECTORY or you will get an error
+		vector<double> next_mp = convert_frenet_to_cartesian_coordinates(car_s + i * 40 + 15, d_val);//TODO: you need to change this to 60 or even higher if you change NUM_POINTS_FOR_TRAJECTORY or you will get an error
 		ptsx.push_back(next_mp[0]);
 		ptsy.push_back(next_mp[1]);
 	}

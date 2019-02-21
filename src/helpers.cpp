@@ -165,8 +165,10 @@ double convert_mph_to_mps(double mph)
 
 const int convert_frenet_d_coord_to_lane_num(const double d)
 {
+	int car_d = d;
 	const int lane_num = d / LANE_WIDTH;
-
+	if (lane_num < 0)return 0;
+	if (lane_num >= NUM_LANES)return NUM_LANES - 1;
 	return lane_num;
 }
 

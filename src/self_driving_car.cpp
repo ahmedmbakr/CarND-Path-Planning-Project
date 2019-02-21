@@ -32,14 +32,14 @@ std::vector<std::vector<double>> Self_driving_car::move()
 		cout << "execute change_lane_right\n";
 		x_y_trajectory_points = move_to_change_lane_right();
 		break;
-	case PREP_CHANGE_LANE_LEFT:
+	/*case PREP_CHANGE_LANE_LEFT:
 		cout << "execute prep_change_lane_left\n";
 		x_y_trajectory_points = move_to_prep_change_lane_left();
 		break;
 	case PREP_CHANGE_LANE_RIGHT:
 		cout << "execute prep_change_lane_right\n";
 		x_y_trajectory_points = move_to_prep_change_lane_right();
-		break;
+		break;*/
 	}
 	return x_y_trajectory_points;
 }
@@ -293,7 +293,7 @@ std::vector<std::vector<double>> Self_driving_car::move_to_lane(int lane_num,
 	const double d_val = convert_lane_num_to_d(lane_num);
 	for(int i = 1; i <= 3;++i)
 	{
-		vector<double> next_mp = convert_frenet_to_cartesian_coordinates(car_s + i * 40 + 15, d_val);//TODO: you need to change this to 60 or even higher if you change NUM_POINTS_FOR_TRAJECTORY or you will get an error
+		vector<double> next_mp = convert_frenet_to_cartesian_coordinates(car_s + i * 35 + 15, d_val);//TODO: you need to change this to 60 or even higher if you change NUM_POINTS_FOR_TRAJECTORY or you will get an error
 		ptsx.push_back(next_mp[0]);
 		ptsy.push_back(next_mp[1]);
 	}

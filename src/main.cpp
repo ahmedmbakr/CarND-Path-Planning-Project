@@ -24,7 +24,7 @@ int main() {
 	// Waypoint map to read from
 	string file_path = __FILE__;
 	string dir_path = file_path.substr(0, file_path.rfind("\\"));//The path of the main.cpp file
-	string map_file_ = dir_path + "/../data/highway_map.csv";
+	string map_file_ = "../data/highway_map.csv";
 	// The max s value before wrapping around the track back to 0
 	double max_s = 6945.554;
 	vector<double> map_waypoints_x;

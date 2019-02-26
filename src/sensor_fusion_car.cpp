@@ -1,4 +1,5 @@
 #include "sensor_fusion_car.h"
+#include <math.h>
 using namespace std;
 
 const std::vector<Sensor_fusion_car> Sensor_fusion_builder::parse_sensor_fusion_vec(
